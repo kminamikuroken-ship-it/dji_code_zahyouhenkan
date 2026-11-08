@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102a43">
+  <title>愛知県 座標変換 | 平面直角座標 → 緯度・経度</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <p class="eyebrow">AICHI · COORDINATE CONVERTER</p>
+      <h1>平面直角座標を<br class="mobile-break">緯度・経度に変換</h1>
+      <p class="intro">X・Y・Zを入力すると、10進数の緯度・経度とジオイド高、標高を表示します。</p>
+    </header>
+
+    <section class="card" aria-labelledby="input-title">
+      <div class="section-heading"><span class="step">01</span><div><h2 id="input-title">座標を入力</h2><p>愛知県で使われる平面直角座標系 第VII系を初期選択しています。</p></div></div>
+      <form id="coordinate-form">
+        <label class="field zone-field" for="zone"><span>座標系</span>
+          <select id="zone" name="zone">
+            <option value="7" selected>平面直角座標系 第VII系（愛知県）</option>
+            <option value="6">平面直角座標系 第VI系</option>
+            <option value="8">平面直角座標系 第VIII系</option>
+          </select>
+        </label>
+        <div class="fields-grid">
+          <label class="field" for="x"><span>X <small>（北方向・m）</small></span><input id="x" name="x" inputmode="decimal" type="number" step="any" placeholder="例：-120000" required></label>
+          <label class="field" for="y"><span>Y <small>（東方向・m）</small></span><input id="y" name="y" inputmode="decimal" type="number" step="any" placeholder="例：-25000" required></label>
+          <label class="field" for="z"><span>Z <small>（楕円体高・m）</small></span><input id="z" name="z" inputmode="decimal" type="number" step="any" placeholder="例：50.0" required></label>
+        </div>
+        <p class="hint">X＝北方向、Y＝東方向です。ZはJGD2011楕円体高（m）として扱います。</p>
+        <button class="submit" type="submit"><span>座標を変換</span><span aria-hidden="true">→</span></button>
+      </form>
+      <div id="error" class="error" role="alert" hidden></div>
+    </section>
+
+    <section id="results" class="card results" aria-labelledby="result-title" hidden aria-live="polite">
+      <div class="section-heading"><span class="step">02</span><div><h2 id="result-title">変換結果</h2><p>緯度・経度はJGD2011の10進数です。</p></div></div>
+      <div class="coordinates">
+        <div class="coordinate"><span>緯度 Latitude</span><strong id="latitude">—</strong><small>°（北緯）</small><button class="copy" data-copy="latitude" type="button">コピー</button></div>
+        <div class="coordinate"><span>経度 Longitude</span><strong id="longitude">—</strong><small>°（東経）</small><button class="copy" data-copy="longitude" type="button">コピー</button></div>
+      </div>
+      <div class="height-list">
+        <div class="height-row"><span>入力した楕円体高（Z）</span><strong id="input-z">—</strong></div>
+        <div class="height-row"><span>ジオイド高（GSI）</span><strong id="geoid">取得中…</strong></div>
+        <div class="height-row highlight"><span>計算標高 <small>（楕円体高 − ジオイド高）</small></span><strong id="orthometric">—</strong></div>
+        <div class="height-row"><span>地理院標高（DEM）</span><strong id="dem">取得中…</strong></div>
+      </div>
+      <p id="api-note" class="api-note">ジオイド高・地理院標高は国土地理院の公開サービスから取得します。</p>
+    </section>
+
+    <aside class="notice"><strong>ご利用上の注意</strong><p>変換はGRS80楕円体・平面直角座標系の逆計算です。第VII系は愛知県内の多くの地域で利用されますが、元データの座標系・測地系を確認してください。ジオイド高と地理院標高は国土地理院の公開APIに接続できる場合に取得します。測量成果として使用する場合は、国土地理院の測量計算サイトで照合してください。</p><a href="https://vldb.gsi.go.jp/sokuchi/surveycalc/main.html" target="_blank" rel="noopener noreferrer">国土地理院 測量計算サイト ↗</a></aside>
+    <footer>座標変換：JGD2011 / GRS80 · 高さデータ：国土地理院公開サービス</footer>
+  </main>
+  <script src="app.js" defer></script>
+</body>
+</html>
