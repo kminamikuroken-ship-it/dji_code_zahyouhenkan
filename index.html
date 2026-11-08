@@ -4,33 +4,56 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#102a43">
-  <title>愛知県 座標変換 | 平面直角座標 → 緯度・経度</title>
+  <title>平面直角座標変換 | X・Y・Z → 緯度・経度</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="shell">
     <header class="hero">
-      <p class="eyebrow">AICHI · COORDINATE CONVERTER</p>
+      <p class="eyebrow">JAPAN · PLANE RECTANGULAR COORDINATES</p>
       <h1>平面直角座標を<br class="mobile-break">緯度・経度に変換</h1>
-      <p class="intro">X・Y・Zを入力すると、10進数の緯度・経度とジオイド高、標高を表示します。</p>
+      <p class="intro">系番号を選択して X・Y・Z を入力すると、10進数の緯度・経度と高さ情報を表示します。</p>
     </header>
 
     <section class="card" aria-labelledby="input-title">
-      <div class="section-heading"><span class="step">01</span><div><h2 id="input-title">座標を入力</h2><p>愛知県で使われる平面直角座標系 第VII系を初期選択しています。</p></div></div>
+      <div class="section-heading"><span class="step">01</span><div><h2 id="input-title">座標を入力</h2><p>座標データに記載された平面直角座標系の系番号を選んでください。</p></div></div>
       <form id="coordinate-form">
-        <label class="field zone-field" for="zone"><span>座標系</span>
-          <select id="zone" name="zone">
-            <option value="7" selected>平面直角座標系 第VII系（愛知県）</option>
-            <option value="6">平面直角座標系 第VI系</option>
-            <option value="8">平面直角座標系 第VIII系</option>
+        <label class="field zone-field" for="zone"><span>平面直角座標系（19系から選択）</span>
+          <select id="zone" name="zone" required>
+            <option value="1">第I系 — 原点：北緯33°・東経129°30′</option>
+            <option value="2">第II系 — 原点：北緯33°・東経131°</option>
+            <option value="3">第III系 — 原点：北緯36°・東経132°10′</option>
+            <option value="4">第IV系 — 原点：北緯33°・東経133°30′</option>
+            <option value="5">第V系 — 原点：北緯36°・東経134°20′</option>
+            <option value="6">第VI系 — 原点：北緯36°・東経136°</option>
+            <option value="7" selected>第VII系 — 愛知県など（原点：北緯36°・東経137°10′）</option>
+            <option value="8">第VIII系 — 原点：北緯36°・東経138°30′</option>
+            <option value="9">第IX系 — 原点：北緯36°・東経139°50′</option>
+            <option value="10">第X系 — 原点：北緯40°・東経140°50′</option>
+            <option value="11">第XI系 — 原点：北緯44°・東経140°15′</option>
+            <option value="12">第XII系 — 原点：北緯44°・東経142°15′</option>
+            <option value="13">第XIII系 — 原点：北緯44°・東経144°15′</option>
+            <option value="14">第XIV系 — 原点：北緯26°・東経142°</option>
+            <option value="15">第XV系 — 原点：北緯26°・東経127°30′</option>
+            <option value="16">第XVI系 — 原点：北緯26°・東経124°</option>
+            <option value="17">第XVII系 — 原点：北緯26°・東経131°</option>
+            <option value="18">第XVIII系 — 原点：北緯20°・東経136°</option>
+            <option value="19">第XIX系 — 原点：北緯26°・東経154°</option>
           </select>
         </label>
+
+        <div class="axis-guide" role="note" aria-label="土木で一般的な軸方向">
+          <strong>軸方向（一般的な土木座標）</strong>
+          <div class="axis-values"><span><b>X</b> 北方向（北向きが正）</span><span><b>Y</b> 東方向（東向きが正）</span><span><b>Z</b> 高さ（上向きが正）</span></div>
+          <p>平面直角座標系の測量成果では、通常 X＝北方向、Y＝東方向です。入力ファイルの列名や座標系の説明も確認してください。X・Yの単位はmです。</p>
+        </div>
+
         <div class="fields-grid">
           <label class="field" for="x"><span>X <small>（北方向・m）</small></span><input id="x" name="x" inputmode="decimal" type="number" step="any" placeholder="例：-120000" required></label>
           <label class="field" for="y"><span>Y <small>（東方向・m）</small></span><input id="y" name="y" inputmode="decimal" type="number" step="any" placeholder="例：-25000" required></label>
           <label class="field" for="z"><span>Z <small>（楕円体高・m）</small></span><input id="z" name="z" inputmode="decimal" type="number" step="any" placeholder="例：50.0" required></label>
         </div>
-        <p class="hint">X＝北方向、Y＝東方向です。ZはJGD2011楕円体高（m）として扱います。</p>
+        <p class="hint">ZはJGD2011楕円体高として扱います。標高（ジオイド面基準）を入力した場合、Z−ジオイド高の計算標高は正しくなりません。</p>
         <button class="submit" type="submit"><span>座標を変換</span><span aria-hidden="true">→</span></button>
       </form>
       <div id="error" class="error" role="alert" hidden></div>
@@ -51,8 +74,8 @@
       <p id="api-note" class="api-note">ジオイド高・地理院標高は国土地理院の公開サービスから取得します。</p>
     </section>
 
-    <aside class="notice"><strong>ご利用上の注意</strong><p>変換はGRS80楕円体・平面直角座標系の逆計算です。第VII系は愛知県内の多くの地域で利用されますが、元データの座標系・測地系を確認してください。ジオイド高と地理院標高は国土地理院の公開APIに接続できる場合に取得します。測量成果として使用する場合は、国土地理院の測量計算サイトで照合してください。</p><a href="https://vldb.gsi.go.jp/sokuchi/surveycalc/main.html" target="_blank" rel="noopener noreferrer">国土地理院 測量計算サイト ↗</a></aside>
-    <footer>座標変換：JGD2011 / GRS80 · 高さデータ：国土地理院公開サービス</footer>
+    <aside class="notice"><strong>ご利用上の注意</strong><p>系番号は自動判定されません。元データの座標系・測地系・単位・軸順を確認してください。測量成果に用いる場合は国土地理院の測量計算サイトで照合してください。外部APIの通信状況や対象範囲により高さ情報を取得できない場合があります。</p><a href="https://vldb.gsi.go.jp/sokuchi/surveycalc/main.html" target="_blank" rel="noopener noreferrer">国土地理院 測量計算サイト ↗</a></aside>
+    <footer>平面直角座標系 I〜XIX · JGD2011 / GRS80 · 高さデータ：国土地理院公開サービス</footer>
   </main>
   <script src="app.js" defer></script>
 </body>
