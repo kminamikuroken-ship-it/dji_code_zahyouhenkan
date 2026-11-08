@@ -1,112 +1,133 @@
 const form = document.querySelector('#coordinate-form');
 const resultPanel = document.querySelector('#results');
 const errorBox = document.querySelector('#error');
+
+// JGD2011 / GRS80 origins of Japan's plane rectangular coordinate systems.
+// Civil engineering convention: X = northing, Y = easting (metres).
 const zoneDefinitions = {
+  1: { lat: 33, lon: 129.5 },
+  2: { lat: 33, lon: 131 },
+  3: { lat: 36, lon: 132 + 10 / 60 },
+  4: { lat: 33, lon: 133.5 },
+  5: { lat: 36, lon: 134 + 20 / 60 },
   6: { lat: 36, lon: 136 },
   7: { lat: 36, lon: 137 + 10 / 60 },
-  8: { lat: 36, lon: 138 + 30 / 60 },
+  8: { lat: 36, lon: 138.5 },
+  9: { lat: 36, lon: 139 + 50 / 60 },
+  10: { lat: 40, lon: 140 + 50 / 60 },
+  11: { lat: 44, lon: 140 + 15 / 60 },
+  12: { lat: 44, lon: 142 + 15 / 60 },
+  13: { lat: 44, lon: 144 + 15 / 60 },
+  14: { lat: 26, lon: 142 },
+  15: { lat: 26, lon: 127.5 },
+  16: { lat: 26, lon: 124 },
+  17: { lat: 26, lon: 131 },
+  18: { lat: 20, lon: 136 },
+  19: { lat: 26, lon: 154 },
 };
 
-// JGD2011 uses GRS80. The Japanese plane rectangular system uses k0=0.9999.
 const A = 6378137;
 const INV_F = 298.257222101;
 const F = 1 / INV_F;
 const E2 = F * (2 - F);
-const EP2 = E2 / (1 - E2);
 const K0 = 0.9999;
 const RAD = Math.PI / 180;
 
-function meridionalArc(phi) {
+function projectionConstants() {
   const n = F / (2 - F);
   const n2 = n * n;
   const n3 = n2 * n;
   const n4 = n2 * n2;
   const n5 = n4 * n;
   const n6 = n3 * n3;
-  const alpha = [
-    (n - n2 * 1.5 + n3 * 0.5 + n4 * 0.1875 - n5 * 0.1875 - n6 * 0.1171875),
-    (n2 * 0.75 - n3 * 0.75 + n4 * 0.46875 + n5 * 0.375 - n6 * 0.29296875),
-    (n3 * 0.625 - n4 * 0.9375 + n5 * 0.3125 + n6 * 0.546875),
-    (n4 * 0.етр),
-  ];
-  // Standard Krüger series coefficients through n^6.
-  alpha[3] = 0.46875 * n4 - 0.46875 * n5 - 0.546875 * n6;
-  alpha[4] = 0.етра;
-  alpha[5] = 0;
-  // The expressions below are the conventional coefficients for the meridian arc.
-  const Abar = A / (1 + n) * (1 + n2 / 4 + n4 / 64 + n6 / 256);
-  const coeff = [
-    n / 2 - 2 * n2 / 3 + 5 * n3 / 16 + 41 * n4 / 180 - 127 * n5 / 288 + 7891 * n6 / 37800,
-    13 * n2 / 48 - 3 * n3 / 5 + 557 * n4 / 1440 + 281 * n5 / 630 - 1983433 * n6 / 1935360,
-    61 * n3 / 240 - 103 * n4 / 140 + 15061 * n5 / 26880 + 167603 * n6 / 181440,
-    49561 * n4 / 161280 - 179 * n5 / 168 + 6601661 * n6 / 7257600,
-    34729 * n5 / 80640 - 3418889 * n6 / 1995840,
-    212378941 * n6 / 319334400,
-  ];
-  return Abar * (phi - coeff.reduce((sum, c, i) => sum + c * Math.sin(2 * (i + 1) * phi), 0));
+  return {
+    Abar: A / (1 + n) * (1 + n2 / 4 + n4 / 64 + n6 / 256),
+    alpha: [
+      n / 2 - 2 * n2 / 3 + 5 * n3 / 16 + 41 * n4 / 180 - 127 * n5 / 288 + 7891 * n6 / 37800,
+      13 * n2 / 48 - 3 * n3 / 5 + 557 * n4 / 1440 + 281 * n5 / 630 - 1983433 * n6 / 1935360,
+      61 * n3 / 240 - 103 * n4 / 140 + 15061 * n5 / 26880 + 167603 * n6 / 181440,
+      49561 * n4 / 161280 - 179 * n5 / 168 + 6601661 * n6 / 7257600,
+      34729 * n5 / 80640 - 3418889 * n6 / 1995840,
+      212378941 * n6 / 319334400,
+    ],
+    beta: [
+      n / 2 - 2 * n2 / 3 + 37 * n3 / 96 - n4 / 360 - 81 * n5 / 512 + 96199 * n6 / 604800,
+      n2 / 48 + n3 / 15 - 437 * n4 / 1440 + 46 * n5 / 105 - 1118711 * n6 / 3870720,
+      17 * n3 / 480 - 37 * n4 / 840 - 209 * n5 / 4480 + 5569 * n6 / 90720,
+      4397 * n4 / 161280 - 11 * n5 / 504 - 830251 * n6 / 7257600,
+      4583 * n5 / 161280 - 108847 * n6 / 3991680,
+      20648693 * n6 / 638668800,
+    ],
+  };
 }
 
-// Invert the transverse Mercator by solving its forward equations with Newton steps.
-// This avoids truncated inverse-series error in the wide area of Japan's plane systems.
+const PROJ = projectionConstants();
+
+function meridionalArc(phi) {
+  return PROJ.Abar * (phi - PROJ.alpha.reduce(
+    (sum, coefficient, index) => sum + coefficient * Math.sin(2 * (index + 1) * phi),
+    0,
+  ));
+}
+
 function forwardTM(phi, lambda, phi0, lambda0) {
-  const n = F / (2 - F);
-  const n2 = n * n;
-  const n3 = n2 * n;
-  const n4 = n2 * n2;
-  const n5 = n4 * n;
-  const n6 = n3 * n3;
-  const Abar = A / (1 + n) * (1 + n2 / 4 + n4 / 64 + n6 / 256);
-  const beta = [
-    n / 2 - 2 * n2 / 3 + 37 * n3 / 96 - n4 / 360 - 81 * n5 / 512 + 96199 * n6 / 604800,
-    n2 / 48 + n3 / 15 - 437 * n4 / 1440 + 46 * n5 / 105 - 1118711 * n6 / 3870720,
-    17 * n3 / 480 - 37 * n4 / 840 - 209 * n5 / 4480 + 5569 * n6 / 90720,
-    4397 * n4 / 161280 - 11 * n5 / 504 - 830251 * n6 / 7257600,
-    4583 * n5 / 161280 - 108847 * n6 / 3991680,
-    20648693 * n6 / 638668800,
-  ];
   const tau = Math.tan(phi);
-  const sigma = Math.sinh(EP2 * Math.atanh(Math.sqrt(E2) * Math.sin(phi)));
-  const tauPrime = Math.sinh(Math.asinh(tau) - Math.sqrt(E2) * Math.atanh(Math.sqrt(E2) * tau / Math.sqrt(1 + tau * tau)));
-  const xiPrime = Math.atan2(tauPrime, Math.cos(lambda - lambda0));
-  const etaPrime = Math.asinh(Math.sin(lambda - lambda0) / Math.sqrt(tauPrime * tauPrime + Math.cos(lambda - lambda0) ** 2));
+  const tauPrime = Math.sinh(
+    Math.asinh(tau)
+      - Math.sqrt(E2) * Math.atanh(
+        Math.sqrt(E2) * tau / Math.sqrt(1 + tau * tau),
+      ),
+  );
+  const deltaLambda = lambda - lambda0;
+  const xiPrime = Math.atan2(tauPrime, Math.cos(deltaLambda));
+  const etaPrime = Math.asinh(
+    Math.sin(deltaLambda) / Math.sqrt(tauPrime * tauPrime + Math.cos(deltaLambda) ** 2),
+  );
   let xi = xiPrime;
   let eta = etaPrime;
-  for (let j = 1; j <= 6; j++) {
-    xi -= beta[j - 1] * Math.sin(2 * j * xiPrime) * Math.cosh(2 * j * etaPrime);
-    eta -= beta[j - 1] * Math.cos(2 * j * xiPrime) * Math.sinh(2 * j * etaPrime);
+  for (let j = 1; j <= PROJ.beta.length; j++) {
+    xi -= PROJ.beta[j - 1] * Math.sin(2 * j * xiPrime) * Math.cosh(2 * j * etaPrime);
+    eta -= PROJ.beta[j - 1] * Math.cos(2 * j * xiPrime) * Math.sinh(2 * j * etaPrime);
   }
-  return { x: K0 * Abar * (xi - meridionalArc(phi0) / Abar), y: K0 * Abar * eta };
+  return {
+    x: K0 * PROJ.Abar * (xi - meridionalArc(phi0) / PROJ.Abar),
+    y: K0 * PROJ.Abar * eta,
+  };
 }
 
 function inversePlaneRectangular(x, y, zone) {
   const origin = zoneDefinitions[zone];
-  if (!origin) throw new Error('座標系を選択してください。');
+  if (!origin) throw new Error('平面直角座標系を選択してください。');
   const phi0 = origin.lat * RAD;
   const lambda0 = origin.lon * RAD;
-  // Newton iteration against the exact Krüger forward projection, using a local numerical Jacobian.
   let phi = phi0 + x / (A * K0);
   let lambda = lambda0 + y / (A * K0 * Math.cos(phi0));
+
   for (let i = 0; i < 12; i++) {
-    const p = forwardTM(phi, lambda, phi0, lambda0);
-    const dx = x - p.x;
-    const dy = y - p.y;
+    const projected = forwardTM(phi, lambda, phi0, lambda0);
+    const dx = x - projected.x;
+    const dy = y - projected.y;
     if (Math.hypot(dx, dy) < 1e-7) break;
+
     const h = 1e-7;
     const pPhi = forwardTM(phi + h, lambda, phi0, lambda0);
-    const pLam = forwardTM(phi, lambda + h, phi0, lambda0);
-    const a = (pPhi.x - p.x) / h;
-    const b = (pLam.x - p.x) / h;
-    const c = (pPhi.y - p.y) / h;
-    const d = (pLam.y - p.y) / h;
-    const det = a * d - b * c;
-    if (!Number.isFinite(det) || Math.abs(det) < 1e-8) throw new Error('入力座標を変換できません。X・Yと座標系を確認してください。');
-    phi += (dx * d - b * dy) / det;
-    lambda += (a * dy - dx * c) / det;
+    const pLambda = forwardTM(phi, lambda + h, phi0, lambda0);
+    const a = (pPhi.x - projected.x) / h;
+    const b = (pLambda.x - projected.x) / h;
+    const c = (pPhi.y - projected.y) / h;
+    const d = (pLambda.y - projected.y) / h;
+    const determinant = a * d - b * c;
+    if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-8) {
+      throw new Error('入力座標を変換できません。X・Yと系番号を確認してください。');
+    }
+    phi += (dx * d - b * dy) / determinant;
+    lambda += (a * dy - dx * c) / determinant;
   }
+
   const lat = phi / RAD;
   const lon = lambda / RAD;
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
-    throw new Error('変換結果が有効な範囲外です。入力値と座標系を確認してください。');
+    throw new Error('変換結果が有効な範囲外です。入力値と系番号を確認してください。');
   }
   return { lat, lon };
 }
@@ -178,11 +199,17 @@ form.addEventListener('submit', async (event) => {
 
     let dem = null;
     if (demResult.status === 'fulfilled') dem = findNumber(demResult.value, 'elevation');
-    if (dem !== null && dem >= -9999) setText('dem', `${fmt(dem)}${demResult.value.hsrc ? `（${demResult.value.hsrc}）` : ''}`);
-    else setText('dem', '取得できませんでした');
+    if (dem !== null && dem >= -9999) {
+      const source = demResult.value.hsrc ? `（${demResult.value.hsrc}）` : '';
+      setText('dem', `${fmt(dem)}${source}`);
+    } else {
+      setText('dem', '取得できませんでした');
+    }
 
     const failures = [geoid === null && 'ジオイド高', dem === null && '地理院標高'].filter(Boolean);
-    setText('api-note', failures.length ? `${failures.join('・')}を取得できませんでした。通信環境を確認するか、国土地理院のサイトでご確認ください。` : 'ジオイド高は国土地理院API、地理院標高はDEMから取得しました。地形データの解像度や取得状況により値が異なる場合があります。');
+    setText('api-note', failures.length
+      ? `${failures.join('・')}を取得できませんでした。通信環境を確認するか、国土地理院のサイトでご確認ください。`
+      : 'ジオイド高は国土地理院API、地理院標高はDEMから取得しました。地形データの解像度や取得状況により値が異なる場合があります。');
   } catch (error) {
     errorBox.textContent = error.message || '座標を変換できませんでした。入力値を確認してください。';
     errorBox.hidden = false;
@@ -196,6 +223,8 @@ document.querySelectorAll('.copy').forEach((button) => {
       await navigator.clipboard.writeText(value);
       button.textContent = 'コピー済み';
       setTimeout(() => { button.textContent = 'コピー'; }, 1200);
-    } catch { button.textContent = '選択してコピー'; }
+    } catch {
+      button.textContent = '選択してコピー';
+    }
   });
 });
